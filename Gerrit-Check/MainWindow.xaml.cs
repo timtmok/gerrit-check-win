@@ -35,14 +35,14 @@ namespace Gerrit_Check
             HideApplication();
         }
 
-        private void ReviewsModelOnOnUpdated()
+        private void ReviewsModelOnOnUpdated(UpdateStatus status)
         {
-            if (_reviewsModel.SubmittableReviews > 0)
+            if (status.HasNewSubmittable)
             {
                 var commitWord = _reviewsModel.SubmittableReviews > 1 ? "commits" : "commit";
                 ShowTooltip("Ready to submit", $"{_reviewsModel.SubmittableReviews} {commitWord} ready to submit", _readyIcon);
             }
-            else if (_reviewsModel.PendingReviews > 0)
+            else if (status.HasNewPending)
             {
                 var commitWord = _reviewsModel.PendingReviews > 1 ? "commits" : "commit";
                 ShowTooltip("Pending Reviews", $"{_reviewsModel.PendingReviews} {commitWord} to review", _pendingIcon);
