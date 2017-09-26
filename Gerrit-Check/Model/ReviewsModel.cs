@@ -75,6 +75,7 @@ namespace Gerrit_Check.Model
                 try
                 {
                     var reviews = JArray.Parse(content);
+                    SubmittableReviews = 0;
                     foreach (var review in reviews)
                     {
                         if (review["submittable"].Value<bool>())
@@ -144,6 +145,13 @@ namespace Gerrit_Check.Model
             });
         }
 
+        /// <summary>
+        /// Gerrit pads the beginning of the response content
+        /// for security reasons. This removes it so we can
+        /// parse the rest as JSON.
+        /// </summary>
+        /// <param name="content">The response content</param>
+        /// <returns>Cleansed content</returns>
         private static string CleanResult(string content)
         {
             return content.Replace(")]}'", "");

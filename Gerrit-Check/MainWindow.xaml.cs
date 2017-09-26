@@ -12,6 +12,7 @@ namespace Gerrit_Check
     /// </summary>
     public partial class MainWindow
     {
+        private const int TooltipDuration = 5000;
         private readonly NotifyIcon _notifyIcon;
         private readonly Icon _defaultIcon = System.Drawing.Icon.FromHandle(Properties.Resources.Gerrit_16x16.GetHicon());
         private readonly Icon _readyIcon = System.Drawing.Icon.FromHandle(Properties.Resources.Ready.GetHicon());
@@ -38,20 +39,26 @@ namespace Gerrit_Check
         {
             if (_reviewsModel.SubmittableReviews > 0)
             {
-                _notifyIcon.Icon = _readyIcon;
+                var commitWord = _reviewsModel.SubmittableReviews > 1 ? "commits" : "commit";
+                ShowTooltip("Ready to submit", $"{_reviewsModel.SubmittableReviews} {commitWord} ready to submit", _readyIcon);
             }
             else if (_reviewsModel.PendingReviews > 0)
             {
                 var commitWord = _reviewsModel.PendingReviews > 1 ? "commits" : "commit";
-                _notifyIcon.Icon = _pendingIcon;
-                _notifyIcon.BalloonTipText = $"{_reviewsModel.PendingReviews} {commitWord} to review";
-                _notifyIcon.BalloonTipTitle = "Pending Reviews";
-                _notifyIcon.ShowBalloonTip(5000);
+                ShowTooltip("Pending Reviews", $"{_reviewsModel.PendingReviews} {commitWord} to review", _pendingIcon);
             }
             else
             {
                 _notifyIcon.Icon = _defaultIcon;
             }
+        }
+
+        private void ShowTooltip(string title, string tipText, Icon icon)
+        {
+            _notifyIcon.Icon = icon;
+            _notifyIcon.BalloonTipText = tipText;
+            _notifyIcon.BalloonTipTitle = title;
+            _notifyIcon.ShowBalloonTip(TooltipDuration);
         }
 
         private void NotifyIcon_Click(object sender, EventArgs e)
