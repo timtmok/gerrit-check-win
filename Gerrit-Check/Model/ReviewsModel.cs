@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Timers;
 using Newtonsoft.Json.Linq;
+using NLog;
 
 namespace Gerrit_Check.Model
 {
@@ -24,7 +25,7 @@ namespace Gerrit_Check.Model
 
         private readonly Timer _updateTimer;
         private const double UpdateTimerInterval = 300000;
-
+        private static Logger logger = LogManager.GetCurrentClassLogger();
         private readonly Dictionary<string, int> _pendingReviewToRevisions = new Dictionary<string, int>();
 
         private UpdateStatus _updateStatus;
@@ -62,16 +63,32 @@ namespace Gerrit_Check.Model
         private void UpdateModel()
         {
             if (Server == string.Empty || Project == string.Empty || Username == string.Empty)
+            {
+                logger.Error("Invalid settings");
+                logger.Error($"Server: {Server}");
+                logger.Error($"Project: {Project}");
+                logger.Error($"Username: {Username}");
+
                 return;
+            }
 
             if (_updateStatus?.InProgress ?? false)
+            {
+                logger.Trace("Cancel model update... update already in progress");
                 return;
+            }
+
+            logger.Trace("Updating model...");
 
             var client = CreateGerritRequest();
             var pendingReviewsParameters = $"?q=status:open+project:{Project}+reviewer:{Username}&o=all_revisions";
             var submittableReviewsParameters = $"?q=status:open+project:{Project}+owner:{Username}";
 
             _updateStatus = new UpdateStatus {InProgress = true};
+
+            logger.Trace($"Base address: {client.BaseAddress}");
+            logger.Trace($"Pending query: {pendingReviewsParameters}");
+            logger.Trace($"Submittable query: {submittableReviewsParameters}");
 
             client.GetAsync(pendingReviewsParameters).ContinueWith(ProcessPendingResult);
             client.GetAsync(submittableReviewsParameters).ContinueWith(ProcessSubmittableResult);
@@ -80,7 +97,9 @@ namespace Gerrit_Check.Model
         private void UpdateModelComplete()
         {
             _updateStatus.InProgress = false;
+            logger.Trace("Model update complete!");
             OnUpdated?.Invoke(_updateStatus);
+            logger.Trace("Notified model listeners");
             _updateTimer.Start();
         }
 
@@ -89,7 +108,7 @@ namespace Gerrit_Check.Model
             var response = task.Result;
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine(response.ReasonPhrase);
+                logger.Error($"Submittable query unsuccessful: {response.ReasonPhrase}");
                 return;
             }
             var responseContent = response.Content.ReadAsStringAsync();
@@ -115,7 +134,7 @@ namespace Gerrit_Check.Model
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    logger.Error(e, "Error while parsing submittable query response");
                 }
                 finally
                 {
@@ -130,7 +149,7 @@ namespace Gerrit_Check.Model
             var response = task.Result;
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine(response.ReasonPhrase);
+                logger.Error($"Pending query unsuccessful: {response.ReasonPhrase}");
                 return;
             }
             var responseContent = response.Content.ReadAsStringAsync();
@@ -166,7 +185,7 @@ namespace Gerrit_Check.Model
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    logger.Error(e, "Error while parsing pending query response");
                 }
                 finally
                 {
@@ -185,7 +204,9 @@ namespace Gerrit_Check.Model
         /// <returns>Cleansed content</returns>
         private static string CleanResult(string content)
         {
-            return content.Replace(")]}'", "");
+            var cleanResult = content.Replace(")]}'", "");
+            logger.Trace($"JSON response: {cleanResult}");
+            return cleanResult;
         }
 
         private HttpClient CreateGerritRequest()
