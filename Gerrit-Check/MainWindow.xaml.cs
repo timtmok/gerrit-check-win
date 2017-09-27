@@ -47,7 +47,7 @@ namespace Gerrit_Check
                 var commitWord = _reviewsModel.PendingReviews > 1 ? "commits" : "commit";
                 ShowTooltip("Pending Reviews", $"{_reviewsModel.PendingReviews} {commitWord} to review", _pendingIcon);
             }
-            else
+            else if (_reviewsModel.PendingReviews == 0 && _reviewsModel.SubmittableReviews == 0)
             {
                 _notifyIcon.Icon = _defaultIcon;
             }
